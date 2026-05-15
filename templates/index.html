@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Notes</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        button {
+            margin-top: 10px;
+            margin-right: 5px;
+            padding: 8px 15px;
+            cursor: pointer;
+        }
+
+        .note {
+            background: #f4f4f4;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 5px;
+        }
+
+        .note-text {
+            margin-bottom: 10px;
+        }
+
+        .edit-input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Quick Note App</h1>
+
+    <textarea id="noteInput" placeholder="Write your note here..."></textarea>
+    <br>
+
+    <button onclick="saveNote()">Save Note</button>
+
+    <h2>Saved Notes</h2>
+
+    <div id="notesContainer"></div>
+
+    <script>
+
+        async function loadNotes() {
+            const response = await fetch('/get_notes');
+            const notes = await response.json();
+
+            const container = document.getElementById('notesContainer');
+            container.innerHTML = '';
+
+            notes.forEach(note => {
+
+                const div = document.createElement('div');
+                div.className = 'note';
+
+                div.innerHTML = `
+                    <div class="note-text" id="text-${note.id}">
+                        ${note.content}
+                    </div>
+
+                    <input
+                        type="text"
+                        id="edit-${note.id}"
+                        class="edit-input"
+                        value="${note.content}"
+                        style="display:none;"
+                    />
+
+                    <button onclick="showEdit(${note.id})">
+                        Edit
+                    </button>
+
+                    <button onclick="updateNote(${note.id})">
+                        Update
+                    </button>
+
+                    <button onclick="deleteNote(${note.id})">
+                        Delete
+                    </button>
+                `;
+
+                container.appendChild(div);
+            });
+        }
+
+
+        async function saveNote() {
+
+            const noteInput = document.getElementById('noteInput');
+            const content = noteInput.value.trim();
+
+            if (!content) {
+                alert('Please write a note');
+                return;
+            }
+
+            const response = await fetch('/add_note', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ content })
+            });
+
+            if (response.ok) {
+                noteInput.value = '';
+                loadNotes();
+            }
+        }
+
+
+        function showEdit(id) {
+
+            const textDiv = document.getElementById(`text-${id}`);
+            const input = document.getElementById(`edit-${id}`);
+
+            textDiv.style.display = 'none';
+            input.style.display = 'block';
+        }
+
+
+        async function updateNote(id) {
+
+            const input = document.getElementById(`edit-${id}`);
+            const content = input.value.trim();
+
+            if (!content) {
+                alert('Content cannot be empty');
+                return;
+            }
+
+            const response = await fetch(`/edit_note/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ content })
+            });
+
+            if (response.ok) {
+                loadNotes();
+            }
+        }
+
+
+        async function deleteNote(id) {
+
+            const confirmed = confirm('Delete this note?');
+
+            if (!confirmed) return;
+
+            const response = await fetch(`/delete_note/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                loadNotes();
+            }
+        }
+
+        loadNotes();
+
+    </script>
+
+</body>
+</html>
